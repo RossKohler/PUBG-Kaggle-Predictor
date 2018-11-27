@@ -4,11 +4,11 @@ from sklearn import linear_model
 
 from sklearn.metrics import mean_squared_error,r2_score
 
+csvrows = 100000000
 
 
-
-df_train = pd.read_csv("./data/train_V2.csv")
-df_test = pd.read_csv("./data/test_V2.csv")
+df_train = pd.read_csv("./data/train_V2.csv",nrows=csvrows)
+df_test = pd.read_csv("./data/test_V2.csv",nrows=csvrows)
 
 df_sample_submission = pd.read_csv("./data/sample_submission_V2.csv")
 
@@ -37,8 +37,8 @@ variance = []
 for matchType in matchTypes:
     df_train_sub = df_train.loc[df_train["matchType"]==matchType]
     train_Id = df_train_sub["Id"]
-    df_train_sub = df_train_sub(['Id','groupId','matchId','matchType'],axis=1)
-    df_train_sub = df_train_sub(df_train_sub.mean())
+    df_train_sub = df_train_sub.drop(['Id','groupId','matchId','matchType'],axis=1)
+    df_train_sub = df_train_sub.fillna(df_train_sub.mean())
     X_train = df_train_sub.drop(['winPlacePerc'],axis=1)
     Y_train = df_train_sub['winPlacePerc']
     linearFit = linear_model.LinearRegression()
@@ -72,71 +72,13 @@ for matchType in matchTypes:
     df_test_sub = df_test.loc[df_test["matchType"]==matchType]
     test_Id = df_test_sub['Id']
     df_test_sub = df_test_sub.drop(['Id','groupId','matchId','matchType'],axis=1)
-    X_test = df_test_sub.fillna(df_test.sub.mean())
-    y_pred = matchTypeModels[matchType].prdict(X_test)
-    y_pred = pd.DataFrame(y_pred)
-    sub_result = pd.concat([test_Id,y_pred],axis=1)
+    X_test = df_test_sub.fillna(df_test_sub.mean())
+    Y_pred = matchTypeModels[matchType].predict(X_test)
+    y_pred = pd.DataFrame(Y_pred)
+    sub_result = pd.concat([test_Id,y_pred],axis=1,ignore_index=True,join="inner")
     result = pd.concat([result,sub_result],axis=0)
 
+
 result.columns=['Id','winPlacePerc']
 print(result)
 result.to_csv("./output/submission.csv",index=False)
-
-"""
-train_Id = df_train['Id']
-df_train = df_train.drop(['Id','groupId','matchId','matchType'],axis=1)
-df_train = df_train.fillna(df_train.mean())
-X_train = df_train.drop(['winPlacePerc'],axis=1)
-Y_train = df_train['winPlacePerc']
-
-test_Id = df_test['Id']
-df_test = df_test.drop(['Id','groupId','matchId','matchType'],axis=1)
-X_test = df_test.fillna(df_test.mean())
-
-
-linearFit = linear_model.LinearRegression()
-linearFit.fit(X_train,Y_train)
-
-
-Y_test = linearFit.predict(X_train)
-Y_pred = linearFit.predict(X_test)
-
-print("Coeficients: \n",linearFit.coef_)
-print("Variance: %.2f" %r2_score(Y_test,Y_train))
-print("Mean Squared Error: %.2f" %mean_squared_error(Y_test,Y_train))
-
-
-y_pred = pd.DataFrame(Y_pred)
-result = pd.concat([test_Id,y_pred],axis=1)
-result.columns=['Id','winPlacePerc']
-print(result)
-
-result.to_csv("./output/submission.csv",index=False)
-
-"""
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
