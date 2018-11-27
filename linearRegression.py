@@ -4,7 +4,7 @@ from sklearn import linear_model
 
 from sklearn.metrics import mean_squared_error,r2_score
 
-csvrows = 100000000
+csvrows = 1000000000
 
 
 df_train = pd.read_csv("./data/train_V2.csv",nrows=csvrows)
@@ -70,15 +70,18 @@ result = pd.DataFrame()
 for matchType in matchTypes:
 
     df_test_sub = df_test.loc[df_test["matchType"]==matchType]
-    test_Id = df_test_sub['Id']
+
+    test_Id = df_test_sub[['Id']]
+    test_Id = test_Id.reset_index(drop=True)
+
+
     df_test_sub = df_test_sub.drop(['Id','groupId','matchId','matchType'],axis=1)
     X_test = df_test_sub.fillna(df_test_sub.mean())
     Y_pred = matchTypeModels[matchType].predict(X_test)
     y_pred = pd.DataFrame(Y_pred)
-    sub_result = pd.concat([test_Id,y_pred],axis=1,ignore_index=True,join="inner")
-    result = pd.concat([result,sub_result],axis=0)
-
+    sub_result = pd.concat([test_Id,y_pred],axis=1)
+    result = result.append(sub_result)
 
 result.columns=['Id','winPlacePerc']
-print(result)
+print("Result Shape:",result.shape)
 result.to_csv("./output/submission.csv",index=False)
