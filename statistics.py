@@ -1,10 +1,10 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import numpy as np
 
 
-
-csvrows = 1000
+csvrows = 100000000
 
 df_train = pd.DataFrame()
 df_test = pd.DataFrame()
@@ -60,11 +60,77 @@ def calcCorrelationHeatMap():
         )
         plt.show(block=True)
 
+def items(df):
+    df['items'] = df['heals']+df['boosts']
+    return df
+
+def players_in_team(df):
+    teamSize = df.groupby(['groupId']).size().to_frame('players_in_team')
+    return df.merge(teamSize,how="left",on=['groupId'])
+
+def total_distance(df):
+    df['total_distance'] = df['rideDistance']+df['swimDistance']+df['walkDistance']
+    return df
+
+def headshotKills_over_kills(df):
+    df['headshotKills_over_kills'] = df['headshotKills']/df['kills']
+    df['headshotKills_over_kills'].fillna(0,inplace=True)
+    return df
+
+def killPlace_over_maxPlace(df):
+    df['killPlace_over_maxPlace'] = df['killPlace']/df['maxPlace']
+    df['killPlace_over_maxPlace'].fillna(0,inplace=True)
+    df['killPlace_over_maxPlace'].replace(np.inf,0,inplace=True)
+    return df
+
+def walkDistance_over_heals(df):
+    df['walkDistance_over_heals'] = df['walkDistance']/df['heals']
+    df['walkDistance_over_heals'].fillna(0,inplace=True)
+    df['walkDistance_over_heals'].replace(np.inf,0,inplace=True)
+    return df
+
+def walkDistance_over_kills(df):
+    df['walkDistance_over_kills']=df['walkDistance']/df['heals']
+    df['walkDistance_over_kills'].fillna(0,inplace=True)
+    df['walkDistance_over_kills'].replace(np.inf,0,inplace=True)
+    return df
+
+def teamwork(df):
+    df['teamwork'] = df['assists'] + df['revives']
+    return df
+
+def calcCorrAddFeatures():
+    df = df_train.copy()
+    df = items(df)
+    df = players_in_team(df)
+    df = total_distance(df)
+    df = headshotKills_over_kills(df)
+    df = killPlace_over_maxPlace(df)
+    df = walkDistance_over_heals(df)
+    df = walkDistance_over_kills(df)
+    df = teamwork(df)
+
+    df = df[['items','players_in_team','total_distance','headshotKills_over_kills','killPlace_over_maxPlace','walkDistance_over_heals','walkDistance_over_kills','teamwork','winPlacePerc']]
+    corr=df.corr()
+    sns.heatmap(
+        data=corr,
+        xticklabels=corr.columns.values,
+        yticklabels=corr.columns.values,
+        annot=True,
+        linecolor='white',
+        linewidths=0.1,
+        cmap="RdBu"
+    )
+    plt.show(block=True)
+
+
+
 
 
 def main():
     readData()
     #plotKillHistorgram()
-    calcCorrelationHeatMap()
+    #calcCorrelationHeatMap()
+    calcCorrAddFeatures()
 
 main()
