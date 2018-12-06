@@ -1,10 +1,33 @@
 from sklearn.model_selection import train_test_split
 from sklearn import neural_network
 from sklearn import  metrics
+from sklearn import preprocessing
 import pandas as pd
+import numpy as np
+import random
+
+csvrows = 100000000000
+
+def addGroupSize(df):
+    groupSize=df.groupby(['matchId','groupId']).size().reset_index(name='group_size')
+    return pd.merge(df,groupSize,how='left',on=['matchId','groupId'])
+    
+
+def total_distance(df):
+    df['total_distance'] = df['rideDistance']+df['swimDistance']+df['walkDistance']
+    return df
+
+def items(df):
+    df['items'] = df['heals']+df['boosts']
+    return df
+
+def matchSize(df):
+    matchSizes = df.groupby(['matchId']).size().reset_index(name='match_size')
+    newDf = df.merge(matchSizes,how="left",on=["matchId"])
+    newDf.drop(["matchId", "groupId"], axis=1, inplace=True)
+    return df
 
 
-csvrows = 1000000000000
 
 print("Reading training data...")
 df_train = pd.read_csv("./data/train_V2.csv",nrows=csvrows)
@@ -12,31 +35,72 @@ df_train = pd.read_csv("./data/train_V2.csv",nrows=csvrows)
 print("Reading test data...")
 df_test = pd.read_csv("./data/test_V2.csv",nrows=csvrows)
 
-df_train = df_train.fillna(df_train.mean())
-df_test= df_test.fillna(df_test.mean())
+print("Looking for NA values in Dataframes...")
+print("Number of rows with NA in DF_TEST:",len(df_test[df_test.isnull().any(axis=1)]))
+print("Number of rows with NA in DF_TRAIN:",len(df_train[df_train.isnull().any(axis=1)]))
+df_train.dropna(inplace=True)
+
+print("Adding additional Features...")
+df_train = addGroupSize(df_train)
+df_train = total_distance(df_train)
+df_train = items(df_train)
+df_train = matchSize(df_train)
 
 
+df_test = addGroupSize(df_test)
+df_test = total_distance(df_test)
+df_test = items(df_test)
+df_test = matchSize(df_test)
 
 print("Preparing data for training...")
-Y = df_train['winPlacePerc']
-X= df_train.copy().drop(['winPlacePerc'],axis=1)
+Y_train = df_train['winPlacePerc']
+X = df_train.copy().drop(['winPlacePerc'],axis=1)
 
-X = X.drop(['Id','groupId','matchId','matchType'],axis=1)
+X_train = X.drop(['Id','groupId','matchId','matchType'],axis=1)
 
-print("X size:",len(X),"Y size:",len(Y))
-print("X head:",X.head(),"Y head:",Y.head())
-
-
-x_train, x_val, y_train, y_val = train_test_split(X,Y,test_size=0.20,random_state=291)
+print("Number of features: %s"%len(X_train.columns))
 
 
+scaler = preprocessing.MinMaxScaler(feature_range=(-1,1),copy=False).fit(X_train)
+scaler.transform(X_train)
+#Get Y in range of [-1,1]
+Y_train = (Y_train*2)-1
 
-model = neural_network.MLPRegressor(activation="relu",alpha=1e-5,hidden_layer_sizes=(100,),solver='lbfgs',random_state=123)
+model = neural_network.MLPRegressor(verbose=True,alpha=1e-5,hidden_layer_sizes=(30,30))
 
 print("Begin training of NN MLP...")
-model.fit(x_train,y_train)
+model.fit(X_train,Y_train)
 
-predicted = model.predict(x_val)
-print("Regression Report:\n %s:" % (model.score(x_val,y_val)))
+print("Regression Report: %s:" % (model.score(X_train,Y_train)))
+
+print("Preparing Test Data for predictions...")
+X_test = df_test.drop(['Id','groupId','matchId','matchType'],axis=1)
+scaler.transform(X_test)
+
+print("Making Predictions...")
+
+pred = model.predict(X_test)
+
+print("Applying post processing...")
+pred = (pred+1)/2
+
+df_test['winPlacePerc'] = pred
+
+df_test.loc[df_test.winPlacePerc<0,"winPlacePerc"] = 0
+df_test.loc[df_test.winPlacePerc>1,"winPlacePerc"] = 1
+
+df_test.loc[df_test.maxPlace == 0, "winPlacePerc"] = 0
+df_test.loc[df_test.maxPlace == 1, "winPlacePerc"] = 1
+
+maxPlaceGreaterOne = df_test.loc[df_test.maxPlace > 1]
+
+step = 1.0/(maxPlaceGreaterOne.maxPlace.values - 1)
+adjustedPerc = np.around(maxPlaceGreaterOne.winPlacePerc.values/step)*step
+
+df_test.loc[df_test.maxPlace > 1, "winPlacePerc"] = adjustedPerc
+
+df_test.loc[(df_test.maxPlace > 1) & (df_test.numGroups == 1), "winPlacePerc"] = 0
 
 
+submission = df_test[['Id', 'winPlacePerc']]
+submission.to_csv('submission.csv', index=False)
