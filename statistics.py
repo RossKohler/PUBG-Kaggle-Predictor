@@ -2,7 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
-
+from sklearn import feature_selection
 
 csvrows = 100000000
 
@@ -18,9 +18,7 @@ def readData():
 
     df_train = pd.read_csv("./data/train_V2.csv",nrows=csvrows)
     df_train = df_train[df_train["winPlacePerc"].notnull()].reset_index(drop=True)
-
-    df_train.loc[:,"winPlacePerc"]*=100
-
+    df_train.dropna(inplace=True)
     df_test = pd.read_csv("./data/test_V2.csv",nrows=csvrows)
     print("Reading test set...")
 
@@ -122,10 +120,6 @@ def calcCorrAddFeatures():
         cmap="RdBu"
     )
     plt.show(block=True)
-
-
-
-
 
 def main():
     readData()
