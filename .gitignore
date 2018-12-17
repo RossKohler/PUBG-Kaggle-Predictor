@@ -110,5 +110,4 @@ data/
 .vscode/
 .DS_Store
 
-
-submission.csv
+*.csv

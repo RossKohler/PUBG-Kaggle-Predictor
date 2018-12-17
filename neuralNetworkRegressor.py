@@ -10,7 +10,7 @@ import gc
 gc.enable()
 
 
-csvrows = 500
+csvrows = 10000000
 
 features = []
 
@@ -109,13 +109,6 @@ df_train = matchSize(df_train)
 
 #df_train = averageWinPlacePercForGroup(df_train)
 
-df_test = addGroupSize(df_test)
-df_test = total_distance(df_test)
-df_test = items(df_test)
-df_test = calculateGroupMin(df_test)
-df_test = calculateGroupMean(df_test)
-df_test = calculateGroupMax(df_test)
-df_test = matchSize(df_test)
 
 print("Preparing data for training...")
 Y_train = df_train['winPlacePerc']
@@ -149,6 +142,16 @@ print("Begin training of NN MLP...")
 model.fit(X_train,Y_train)
 
 print("Regression Report: %s:" % (model.score(X_train,Y_train)))
+
+print("Preparing test data for predictions...")
+df_test = addGroupSize(df_test)
+df_test = total_distance(df_test)
+df_test = items(df_test)
+df_test = calculateGroupMin(df_test)
+df_test = calculateGroupMean(df_test)
+df_test = calculateGroupMax(df_test)
+df_test = matchSize(df_test)
+
 
 print("Preparing Test Data for predictions...")
 X_test = df_test.drop(['Id','groupId','matchId','matchType'],axis=1)
